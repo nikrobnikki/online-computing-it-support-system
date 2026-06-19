@@ -1,6 +1,11 @@
 {
   "name": "kiratech-it-support",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "description": "Online Computing and IT Support Management System",
   "scripts": {
     "start": "cd backend && npm run start",
