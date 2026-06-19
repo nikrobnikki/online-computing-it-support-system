@@ -176,3 +176,19 @@ Open these URLs:
 **Email not sending:**
 - Verify Gmail App Password is correct
 - Check Render logs for email errors
+
+---
+
+## Render Environment Variables (Summary)
+
+At minimum, configure these environment variables for the backend service on Render:
+
+- `NODE_ENV` — `production`
+- `PORT` — `10000`
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `JWT_SECRET` (use Render "Generate" or a secure value)
+- `CLIENT_URL` — frontend URL after frontend deploys
+- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`
+- Optional payment/messaging keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `MPESA_*`, `AIRTEL_MERCHANT_NUMBER`, `USDT_*`
+
+Set these in Render → Service → Environment to ensure successful startup and operation.

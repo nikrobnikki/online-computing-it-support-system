@@ -23,6 +23,7 @@ const paymentRoutes      = require('./routes/payment');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 const isProd = process.env.NODE_ENV === 'production';
+let dbConnected = false;
 
 // ─── 1. Trust proxy (needed for rate limiting behind nginx/load balancer) ─────
 app.set('trust proxy', 1);
@@ -170,6 +171,15 @@ if (!isProd) {
   app.use('/api/docs', (req, res) => res.status(404).json({ error: 'Not found' }));
 }
 
+// If DB is not connected, return 503 for API endpoints except health/docs
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/health') || req.path.startsWith('/api/docs')) return next();
+  if (!dbConnected && req.path.startsWith('/api/')) {
+    return res.status(503).json({ error: 'Service temporarily unavailable' });
+  }
+  next();
+});
+
 // ─── 13. Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth/resend-otp',  otpLimiter);
 app.use('/api/auth/verify-otp',  otpLimiter);
@@ -273,16 +283,25 @@ app.use((err, req, res, next) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 const { verifyEmailConnection } = require('./utils/email');
 
-sequelize.authenticate()
-  .then(() => { console.log('✅ Database connected'); return sequelize.sync({ alter: isProd ? false : true }); })
-  .then(async () => {
+(async function start() {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Database connected');
+    await sequelize.sync({ alter: isProd ? false : true });
     console.log('✅ Database synced');
     await verifyEmailConnection();
+    dbConnected = true;
+  } catch (err) {
+    console.error('❌ DB connection failed:', err.message || err);
+    dbConnected = false;
+    // Don't exit the process — keep the server up so health checks pass and
+    // the deployment can start. API endpoints will return 503 until DB is ready.
+  } finally {
     app.listen(PORT, () => {
       console.log(`🚀 KIRATECH Server: http://localhost:${PORT}`);
       if (!isProd) console.log(`📖 API Docs:        http://localhost:${PORT}/api/docs`);
     });
-  })
-  .catch(err => { console.error('❌ DB connection failed:', err.message); process.exit(1); });
+  }
+})();
 
 module.exports = app;
